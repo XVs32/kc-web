@@ -983,6 +983,9 @@ export default class Item {
    */
   private getTransportPower2(): number {
     switch (this.data.id) {
+      case 576:
+        // 大発動艇(R35&フランス兵)
+        return 18;
       case 230:
         // 特大発動艇+戦車第11連隊
         // 2025春イベ
