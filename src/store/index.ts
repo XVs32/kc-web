@@ -22,10 +22,9 @@ import ShipStockDiff from '@/classes/fleet/shipStockDiff';
 import AirbaseInfo from '@/classes/airbase/airbaseInfo';
 import Airbase from '@/classes/airbase/airbase';
 
-// Firebase Storage 公開URL（署名なしでアクセス可能、ブラウザキャッシュが効く）
-const FIREBASE_STORAGE_BASE = 'https://firebasestorage.googleapis.com/v0/b/development-74af0.appspot.com/o';
-const MASTER_JSON_URL = `${FIREBASE_STORAGE_BASE}/master.json?alt=media`;
-const CELLS_JSON_URL = `${FIREBASE_STORAGE_BASE}/cells.json?alt=media`;
+const MASTER_DATA_BASE_URL = 'https://noro6.net/kc-web-data';
+const MASTER_JSON_URL = `${MASTER_DATA_BASE_URL}/master.json`;
+const CELLS_JSON_URL = `${MASTER_DATA_BASE_URL}/cells.json`;
 
 Vue.use(Vuex);
 
