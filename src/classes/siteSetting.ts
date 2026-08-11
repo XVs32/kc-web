@@ -196,7 +196,13 @@ export default class SiteSetting {
       this.savedItemListFilter = setting.savedItemListFilter ? setting.savedItemListFilter : [{ parent: 'ship', key: 'actualFire', value: 0 }, { parent: 'airbase', key: 'radius', value: 0 }];
       this.savedShipListFilter = ShipFilter.restore(setting.savedShipListFilter);
       this.savedShipListSortKey = setting.savedShipListSortKey ?? '';
-      this.displayBonusKey = setting.displayBonusKey ? setting.displayBonusKey : '62-3';
+      // setting.displayBonusKey が 61-1 の場合は 62-4 に変更
+      if (setting.displayBonusKey === '61-1') {
+        this.displayBonusKey = '62-4';
+      } else {
+        this.displayBonusKey = setting.displayBonusKey ? setting.displayBonusKey : '62-4';
+      }
+      // this.displayBonusKey = setting.displayBonusKey ? setting.displayBonusKey : '62-4';
       // this.displayBonusKey = '';
       this.blacklistItemIds = setting.blacklistItemIds ? setting.blacklistItemIds : [337];
       this.isIncludeUnLockShip = !!setting.isIncludeUnLockShip;
@@ -303,7 +309,7 @@ export default class SiteSetting {
       ];
       this.contentOrder = [];
       // this.displayBonusKey = 'Saury';
-      this.displayBonusKey = '62-3';
+      this.displayBonusKey = '62-4';
       this.blacklistItemIds = [337];
       this.isIncludeUnLockShip = true;
       this.isIncludeUnLockItem = false;

@@ -890,7 +890,6 @@ export default {
       '全選択': 'Select All',
       '一覧表示': 'Table Mode',
       '艦隊分析表示': 'Kantai Bunseki Mode',
-      '未着任': 'Unowned',
       '在籍': 'Total',
       '新規登録': 'Register',
       '練度(Lv)': 'Lv',
