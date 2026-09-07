@@ -14,4 +14,14 @@ axios.get('https://cdn.jsdelivr.net/gh/KC3Kai/kc3-translations@master/data/en/sh
     (data.en as unknown as { [key: string]: string })[key] = res.data[key];
   });
 });
+axios.get('https://cdn.jsdelivr.net/gh/KC3Kai/kc3-translations@master/data/scn/items.json').then((res) => {
+  Object.keys(res.data).forEach((key) => {
+    (data.cn as unknown as { [key: string]: string })[key] = res.data[key];
+  });
+});
+axios.get('https://cdn.jsdelivr.net/gh/KC3Kai/kc3-translations@master/data/scn/ships.json').then((res) => {
+  Object.keys(res.data).forEach((key) => {
+    (data.cn as unknown as { [key: string]: string })[key] = res.data[key];
+  });
+});
 export default data;

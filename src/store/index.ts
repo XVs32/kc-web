@@ -22,17 +22,16 @@ import ShipStockDiff from '@/classes/fleet/shipStockDiff';
 import AirbaseInfo from '@/classes/airbase/airbaseInfo';
 import Airbase from '@/classes/airbase/airbase';
 
-// Firebase Storage 公開URL（署名なしでアクセス可能、ブラウザキャッシュが効く）
-const FIREBASE_STORAGE_BASE = 'https://firebasestorage.googleapis.com/v0/b/development-74af0.appspot.com/o';
-const MASTER_JSON_URL = `${FIREBASE_STORAGE_BASE}/master.json?alt=media`;
-const CELLS_JSON_URL = `${FIREBASE_STORAGE_BASE}/cells.json?alt=media`;
+const MASTER_DATA_BASE_URL = 'https://noro6.net/kc-web-data';
+const MASTER_JSON_URL = `${MASTER_DATA_BASE_URL}/master.json`;
+const CELLS_JSON_URL = `${MASTER_DATA_BASE_URL}/cells.json`;
 
 Vue.use(Vuex);
 
 export default new Vuex.Store({
   state: {
     /** サイトバージョン */
-    siteVersion: '2.52.4',
+    siteVersion: '2.53.5',
     /** 装備マスタデータ */
     items: [] as ItemMaster[],
     /** 艦船マスタデータ */
@@ -177,14 +176,21 @@ export default new Vuex.Store({
     },
     setShipStock: (state, values: ShipStock[]) => {
       const olds = state.shipStock.concat();
-      state.shipStock = values;
+      const stocks = ShipStock.normalize(values);
+      state.shipStock = stocks;
 
       if (state.needShipStockDiff) {
         const diff = new ShipStockDiff();
+        const hasSlotDiff = (current: ShipStock, old: ShipStock) => {
+          const currentSlots = current.slots ?? [];
+          const oldSlots = old.slots ?? [];
+          return currentSlots.length > 0
+            && currentSlots.some((slot, index) => slot !== oldSlots[index]);
+        };
         // 差分チェック => uniqueIdが仕事しているかチェック
-        if (olds.length && olds.length !== olds[olds.length - 1].uniqueId && values.length && values.length !== values[values.length - 1].uniqueId) {
-          for (let i = 0; i < values.length; i += 1) {
-            const current = values[i];
+        if (olds.length && olds.length !== olds[olds.length - 1].uniqueId && stocks.length && stocks.length !== stocks[stocks.length - 1].uniqueId) {
+          for (let i = 0; i < stocks.length; i += 1) {
+            const current = stocks[i];
             const old = olds.find((v) => v.uniqueId === current.uniqueId);
             if (!old) {
               // 過去データにいない
@@ -197,7 +203,8 @@ export default new Vuex.Store({
                 || current.releaseExpand !== old.releaseExpand
                 || current.improvement.hp !== old.improvement.hp
                 || current.improvement.asw !== old.improvement.asw
-                || current.improvement.luck !== old.improvement.luck)
+                || current.improvement.luck !== old.improvement.luck
+                || hasSlotDiff(current, old))
             ) {
               // 過去データと何か違っていたので差分あり
               diff.diffs.push(old);
@@ -205,7 +212,7 @@ export default new Vuex.Store({
           }
 
           // 過去にはいて今はいないものをチェック
-          diff.expulsionShips = olds.filter((old) => !values.some((v) => old.uniqueId === v.uniqueId));
+          diff.expulsionShips = olds.filter((old) => !stocks.some((v) => old.uniqueId === v.uniqueId));
         }
         state.shipStockDiff = diff;
       } else {
@@ -222,7 +229,7 @@ export default new Vuex.Store({
       state.tempItemStock = values;
     },
     updateTempShipStock: (state, values: ShipStock[]) => {
-      state.tempShipStock = values;
+      state.tempShipStock = ShipStock.normalize(values);
     },
     updateTempDate: (state, values: string) => {
       state.tempDate = values;

@@ -45,11 +45,34 @@ export default class ShipStock {
   /** 出撃海域札 */
   public area = 0;
 
+  /** 個体ごとの最大搭載数 */
+  public slots: number[] = [];
+
   /** たすきとかりぼんとか */
   public spEffectItems: SpecialEffectItem[] = [];
 
   /** 手動更新フラグ */
   public isManualInput = false;
+
+  /**
+   * IndexedDB等から復元した旧データ向けに slots を正規化する
+   * @static
+   * @param {ShipStock[]} stocks
+   * @returns {ShipStock[]}
+   * @memberof ShipStock
+   */
+  public static normalize(stocks: ShipStock[]): ShipStock[] {
+    if (!stocks || !stocks.length) {
+      return stocks ?? [];
+    }
+
+    for (let i = 0; i < stocks.length; i += 1) {
+      if (!Array.isArray(stocks[i].slots)) {
+        stocks[i].slots = [];
+      }
+    }
+    return stocks;
+  }
 
   /**
    * 艦隊分析コードを生成
@@ -83,6 +106,7 @@ export default class ShipStock {
           area: stock.area,
           ex: stock.releaseExpand ? 1 : 0,
           sp: stock.spEffectItems ? stock.spEffectItems.map((v) => v.kind) : [],
+          slots: stock.slots && stock.slots.length ? stock.slots : undefined,
         };
         shipJSONRows.push(data);
       }

@@ -39,7 +39,9 @@ interface DeckBuilderItem {
   /** 改修値 */
   rf: number,
   /** 熟練度 */
-  mas?: number
+  mas?: number,
+  /** 搭載数 */
+  ac?: number
 }
 
 /** デッキビルダー 艦娘 */
@@ -163,8 +165,8 @@ interface DeckBuilder {
   s?: DeckBuilderSortieData,
 }
 
-type shipStockJson = { 'api_id': number, 'api_ship_id': number, 'api_lv': number, 'api_exp': number[], 'api_kyouka': number[], 'api_slot_ex': number, 'api_sally_area': number, 'api_sp_effect_items': { 'api_kind': number }[] };
-type shipStockJson2 = { 'id': number, 'ship_id': number, 'lv': number, 'exp': number[], 'st': number[], 'ex': number, 'area': number, 'sp': number[] };
+type shipStockJson = { 'api_id': number, 'api_ship_id': number, 'api_lv': number, 'api_exp': number[], 'api_kyouka': number[], 'api_slot_ex': number, 'api_sally_area': number, 'api_sp_effect_items': { 'api_kind': number }[], 'api_onslot_max'?: number[], 'api_slotnum'?: number };
+type shipStockJson2 = { 'id': number, 'ship_id': number, 'lv': number, 'exp': number[], 'st': number[], 'ex': number, 'area': number, 'sp': number[], 'slots'?: number[] };
 type itemStockJson = { 'api_slotitem_id': number, 'api_level': number };
 type itemStockJson2 = { 'id': number, 'lv': number };
 
@@ -341,6 +343,7 @@ export default class Convert {
       } else if (Const.AB_ATTACKERS_LARGE.includes(master?.apiTypeId)) {
         slot = 9;
       }
+      slot = Convert.getDeckBuilderAircraftCount(item, slot);
       items.push(new Item({
         master, remodel: item.rf, level: Const.PROF_LEVEL_BORDER[item.mas ?? 0], slot,
       }));
@@ -387,11 +390,11 @@ export default class Convert {
       if (itemMaster && itemMaster.apiTypeId === 41 && master.type2 === 90) {
         // 日進 & 大型飛行艇
         items.push(new Item({
-          master: itemMaster, remodel: item.rf, level, slot: 1,
+          master: itemMaster, remodel: item.rf, level, slot: Convert.getDeckBuilderAircraftCount(item, 1),
         }));
       } else {
         items.push(new Item({
-          master: itemMaster, remodel: item.rf, level, slot: master.slots[i],
+          master: itemMaster, remodel: item.rf, level, slot: Convert.getDeckBuilderAircraftCount(item, master.slots[i]),
         }));
       }
     }
@@ -598,6 +601,11 @@ export default class Convert {
         shipStock.area = data.area;
       }
 
+      const slots = Convert.getShipStockSlots(data);
+      if (slots.length) {
+        shipStock.slots = slots;
+      }
+
       // 拡張情報 -海色リボン 白たすき
       if ('api_sp_effect_items' in data && data.api_sp_effect_items.length) {
         for (let j = 0; j < data.api_sp_effect_items.length; j += 1) {
@@ -644,6 +652,25 @@ export default class Convert {
       shipList.push(shipStock);
     }
     return shipList;
+  }
+
+  private static getShipStockSlots(data: shipStockJson | shipStockJson2): number[] {
+    let rawSlots: number[] | undefined;
+    if ('api_onslot_max' in data && data.api_onslot_max) {
+      rawSlots = data.api_onslot_max;
+    } else if ('slots' in data) {
+      rawSlots = data.slots;
+    }
+
+    if (!rawSlots || !rawSlots.length) {
+      return [];
+    }
+
+    const slotCount = 'api_slotnum' in data && data.api_slotnum !== undefined ? data.api_slotnum : rawSlots.length;
+    return rawSlots
+      .slice(0, slotCount)
+      .map((slot) => Math.floor(slot))
+      .filter((slot) => Number.isFinite(slot) && slot >= 0);
   }
 
   /**
@@ -749,7 +776,9 @@ export default class Convert {
       if (ship.exItem.data.id) {
         const level = CommonCalc.getProfLevel(ship.exItem.level);
         if (ship.exItem.data.isPlane) {
-          items.ix = { id: ship.exItem.data.id, rf: ship.exItem.remodel, mas: level };
+          items.ix = {
+            id: ship.exItem.data.id, rf: ship.exItem.remodel, mas: level, ac: ship.exItem.fullSlot,
+          };
         } else {
           items.ix = { id: ship.exItem.data.id, rf: ship.exItem.remodel };
         }
@@ -805,13 +834,19 @@ export default class Convert {
         continue;
       }
       if (item.data.isPlane) {
-        deckItem[`i${j + 1}`] = { id: item.data.id, rf: item.remodel, mas: CommonCalc.getProfLevel(item.level) };
+        deckItem[`i${j + 1}`] = {
+          id: item.data.id, rf: item.remodel, mas: CommonCalc.getProfLevel(item.level), ac: item.fullSlot,
+        };
       } else {
         deckItem[`i${j + 1}`] = { id: item.data.id, rf: item.remodel };
       }
     }
 
     return deckItem;
+  }
+
+  private static getDeckBuilderAircraftCount(item: DeckBuilderItem, defaultSlot: number): number {
+    return item.ac !== undefined && Number.isFinite(item.ac) && item.ac >= 0 ? Math.floor(item.ac) : defaultSlot;
   }
 
   /**
