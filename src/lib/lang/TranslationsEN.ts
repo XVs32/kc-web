@@ -2,7 +2,7 @@
 export default {
   en: {
     Common: {
-      '制空権シミュレータ': 'Aerial Combat Simulator',
+      '制空権シミュレータ': 'Aerial Combat Simulator(XVs32\'s edition)',
       'サイト設定': 'Site settings',
       'マスターデータ読込中': 'Now Loading',
       'OK': 'OK',
