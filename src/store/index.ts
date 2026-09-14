@@ -451,7 +451,7 @@ export default new Vuex.Store({
         .catch((error) => {
           console.error(error);
           // バックアップデータを読み出す
-          getMasterJson('./master_bk/master.json').then(() => {
+          getMasterJson(`${process.env.BASE_URL}master_bk/master.json`).then(() => {
             console.log('マスター(backup)利用');
             context.commit('completed', true);
           });
