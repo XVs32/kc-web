@@ -6,8 +6,8 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "test": "tsx tests/fleetSpecialAttackPartnerHint.test.ts && tsx tests/shipValidation.test.ts && tsx tests/shipCi.test.ts && tsx tests/convertDeckBuilder.test.ts && tsx tests/shipSlotMax.test.ts",
-    "test:item-bonus": "tsx tests/itemBonus.test.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "test:item-bonus": "tsx tests/itemBonus.todo.ts",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
@@ -54,7 +54,7 @@
     "eslint-plugin-import": "^2.25.3",
     "eslint-plugin-vue": "^8.0.3",
     "eslint-plugin-vuejs-accessibility": "^1.2.0",
-    "gh-pages": "^6.1.1",
+    "gh-pages": "6.1.1",
     "sass": "~1.32.0",
     "sass-loader": "^10.0.0",
     "tsx": "^4.22.4",

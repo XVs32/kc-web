@@ -248,14 +248,38 @@ export const SHIP_SLOT_EQUIP_RESTRICTIONS: ShipSlotEquipRestriction[] = [
   {
     shipIds: [748, 749],
     slots: [4, 5],
-    deny: { apiTypeIds: [1, 2, 3, 4, 12, 13, 14, 15, 34, 40] },
-    note: '扶桑型改二補シリーズ 4,5スロットは主砲副砲電探対潜装備司令部は不可',
+    deny: { apiTypeIds: [1, 2, 3, 4, 10, 12, 13, 14, 15, 34, 40, 45] },
+    note: '扶桑型改二補シリーズ 4,5スロットは主砲/副砲/電探/対潜装備/司令部/水偵/水戦は不可',
   },
   {
     shipIds: [1071],
     slots: [4, 5],
     deny: { apiTypeIds: [1, 2, 5, 10, 11, 45] },
     note: '北上改三 5スロットは主砲魚雷水偵水爆は不可',
+  },
+  {
+    shipIds: [978],
+    slots: [3],
+    deny: { apiTypeIds: [2] },
+    note: 'Thonburi改 3スロットは中口径主砲不可',
+  },
+  {
+    shipIds: [750, 751],
+    slots: [4],
+    deny: { apiTypeIds: [1, 2, 5, 13, 22, 24] },
+    note: '由良改二偵/川内改二偵 4スロットは主砲/魚雷/大型電探/特殊潜航艇/大発系不可',
+  },
+  {
+    shipIds: [752],
+    slots: [4],
+    deny: { apiTypeIds: [1, 5, 24] },
+    note: '高波改二偵 4スロットは主砲/魚雷/大発系不可',
+  },
+  {
+    shipIds: [753],
+    slots: [4, 5],
+    deny: { apiTypeIds: [1, 2, 10, 22, 45] },
+    note: '青葉改偵 4,5スロットは主砲/水偵/水戦/特殊潜航艇不可',
   },
 ];
 

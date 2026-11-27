@@ -10,6 +10,63 @@ export interface itemUISetting {
   radius: boolean;
 }
 
+/** 装備一覧で保存したステータス条件（例: 半径 8以上） */
+export type ItemStatusFilterPreset = {
+  id: string;
+  key: string;
+  value: number;
+};
+
+export const ITEM_STATUS_FILTER_PRESET_LIMIT = 12;
+
+/** 装備一覧のステータスフィルタで選べるキー。未知のキーはどの装備とも一致せず一覧が空になる */
+const ITEM_STATUS_FILTER_KEYS = new Set([
+  'actualFire',
+  'dayBattleFirePower',
+  'actualTorpedo',
+  'nightBattleFirePower',
+  'actualBomber',
+  'antiAir',
+  'actualAntiAir',
+  'actualDefenseAntiAir',
+  'actualArmor',
+  'actualAsw',
+  'actualAvoid',
+  'actualScout',
+  'actualAccuracy',
+  'antiBomber',
+  'antiAirWeight',
+  'antiAirBonus',
+  'radius',
+  'cost',
+  'tp',
+  'tp2',
+  'avoidId',
+  'actualRange',
+]);
+
+export function isItemStatusFilterKey(key: string): boolean {
+  return ITEM_STATUS_FILTER_KEYS.has(key);
+}
+
+function restoreItemStatusFilters(value: unknown): ItemStatusFilterPreset[] {
+  if (!Array.isArray(value)) return [];
+  const presets: ItemStatusFilterPreset[] = [];
+  for (let i = 0; i < value.length && presets.length < ITEM_STATUS_FILTER_PRESET_LIMIT; i += 1) {
+    const row = value[i] as { id?: unknown; key?: unknown; value?: unknown };
+    const key = row && typeof row.key === 'string' ? row.key : '';
+    const num = row ? Math.floor(Number(row.value)) : 0;
+    if (!isItemStatusFilterKey(key) || !Number.isFinite(num) || num <= 0 || num > 30) continue;
+    if (presets.some((v) => v.key === key && v.value === num)) continue;
+    presets.push({
+      id: row.id ? String(row.id) : `preset-${i}-${key}-${num}`,
+      key,
+      value: num,
+    });
+  }
+  return presets;
+}
+
 export default class SiteSetting {
   public id: string;
 
@@ -100,6 +157,9 @@ export default class SiteSetting {
   /** フィルタ保存値 */
   public savedItemListFilter: { parent: 'ship' | 'airbase', key: string, value: number }[];
 
+  /** 装備一覧 ステータス条件のプリセット */
+  public savedItemStatusFilters: ItemStatusFilterPreset[];
+
   /** 艦娘一覧 検索条件保存値 */
   public savedShipListFilter: ShipFilter;
 
@@ -163,6 +223,9 @@ export default class SiteSetting {
   /** 最後にバックアップ通知を表示した日時 */
   public lastBackupPromptAt: number;
 
+  /** このブラウザで最初にサイトを開いた日時。0 は機能追加前からの利用者 */
+  public firstVisitedAt: number;
+
   constructor(setting?: SiteSetting) {
     if (setting) {
       this.id = setting.id;
@@ -194,10 +257,11 @@ export default class SiteSetting {
       this.locale = setting.locale === 'ja' || setting.locale === 'en' || setting.locale === 'cn' ? setting.locale : 'ja';
       this.nameIsNotTranslate = !!setting.nameIsNotTranslate;
       this.savedItemListFilter = setting.savedItemListFilter ? setting.savedItemListFilter : [{ parent: 'ship', key: 'actualFire', value: 0 }, { parent: 'airbase', key: 'radius', value: 0 }];
+      this.savedItemStatusFilters = restoreItemStatusFilters(setting.savedItemStatusFilters);
       this.savedShipListFilter = ShipFilter.restore(setting.savedShipListFilter);
       this.savedShipListSortKey = setting.savedShipListSortKey ?? '';
-      // this.displayBonusKey = setting.displayBonusKey ? setting.displayBonusKey : '62-4';
-      this.displayBonusKey = '';
+      this.displayBonusKey = setting.displayBonusKey ? setting.displayBonusKey : 'Saury';
+      // this.displayBonusKey = '';
       this.blacklistItemIds = setting.blacklistItemIds ? setting.blacklistItemIds : [337];
       this.isIncludeUnLockShip = !!setting.isIncludeUnLockShip;
       this.isIncludeUnLockItem = !!setting.isIncludeUnLockItem;
@@ -214,6 +278,7 @@ export default class SiteSetting {
       this.importShipMinLevel = setting.importShipMinLevel ?? 1;
       this.lastBackupCreatedAt = setting.lastBackupCreatedAt ?? 0;
       this.lastBackupPromptAt = setting.lastBackupPromptAt ?? 0;
+      this.firstVisitedAt = setting.firstVisitedAt ?? 0;
 
       if (!setting.planeInitialLevels || !setting.planeInitialLevels.length) {
         this.planeInitialLevels = [
@@ -280,6 +345,7 @@ export default class SiteSetting {
       this.locale = 'ja';
       this.nameIsNotTranslate = false;
       this.savedItemListFilter = [{ parent: 'ship', key: 'actualFire', value: 0 }, { parent: 'airbase', key: 'radius', value: 0 }];
+      this.savedItemStatusFilters = [];
       this.savedShipListFilter = new ShipFilter();
       this.savedShipListSortKey = '';
 
@@ -302,8 +368,8 @@ export default class SiteSetting {
         { id: 26, level: 0 },
       ];
       this.contentOrder = [];
-      // this.displayBonusKey = 'Saury';
-      this.displayBonusKey = '';
+      this.displayBonusKey = 'Saury';
+      // this.displayBonusKey = '';
       this.blacklistItemIds = [337];
       this.isIncludeUnLockShip = true;
       this.isIncludeUnLockItem = false;
@@ -322,6 +388,7 @@ export default class SiteSetting {
       this.allowDataUse = true;
       this.lastBackupCreatedAt = 0;
       this.lastBackupPromptAt = 0;
+      this.firstVisitedAt = Date.now();
     }
   }
 }

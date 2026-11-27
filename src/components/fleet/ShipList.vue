@@ -1,7 +1,7 @@
 <template>
   <v-card class="list-card">
     <div class="d-flex py-2 pr-2 align-center">
-      <div class="ship-search-text ml-3">
+      <div class="ship-search-text pill-input ml-3" :class="{ 'flex-grow-1': isMobile }">
         <v-text-field
           dense
           hide-details
@@ -15,7 +15,7 @@
         />
       </div>
       <template v-if="!isMobile">
-        <div class="api-search-text" v-if="enabledApiIdSearch">
+        <div class="api-search-text pill-input" v-if="enabledApiIdSearch">
           <v-text-field
             dense
             hide-details
@@ -29,7 +29,7 @@
           />
         </div>
         <v-spacer />
-        <div class="mr-3 ship-sort-select">
+        <div class="mr-3 ship-sort-select pill-input">
           <v-select
             dense
             :placeholder="$t('Common.ソート')"
@@ -43,52 +43,52 @@
             prepend-inner-icon="mdi-sort-descending"
           />
         </div>
-        <div class="d-none d-sm-block mr-5">
-          <v-btn-toggle dense v-model="multiLine" borderless mandatory>
-            <v-btn :value="false" :class="{ blue: !multiLine, secondary: multiLine }" @click.stop="changeMultiLine(false)">
-              <v-icon color="white">mdi-view-headline</v-icon>
-              <span class="white--text">{{ $t("ItemList.一列") }}</span>
-            </v-btn>
-            <v-btn :value="true" :class="{ blue: multiLine, secondary: !multiLine }" @click.stop="changeMultiLine(true)">
-              <v-icon color="white">mdi-view-comfy</v-icon>
-              <span class="white--text">{{ $t("ItemList.複数列") }}</span>
-            </v-btn>
-          </v-btn-toggle>
-        </div>
-      </template>
-      <template v-else>
-        <v-spacer></v-spacer>
-        <v-btn icon @click="filterDialog = true">
-          <v-icon>mdi-filter</v-icon>
-        </v-btn>
-        <v-menu bottom @input="filter()">
-          <template v-slot:activator="{ on, attrs }">
-            <v-btn icon v-bind="attrs" v-on="on">
-              <v-icon>mdi-sort</v-icon>
-            </v-btn>
-          </template>
-          <v-card class="sort-menu-card">
-            <v-list dense>
-              <v-list-item @click="sortKey = ''">
-                <v-list-item-title>{{ $t("Common.リセット") }}</v-list-item-title>
-              </v-list-item>
-              <v-list-item v-for="(key, index) in sortKeys" :key="index" @click="sortKey = key.value" :input-value="sortKey === key.value">
-                <v-list-item-title>{{ $t("Common." + key.text) }}</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-card>
-        </v-menu>
+        <v-btn-toggle class="view-toggle mr-1" dense v-model="multiLine" borderless mandatory>
+          <v-btn :value="false" :title="$t('ItemList.一列')" :class="{ active: !multiLine }" @click.stop="changeMultiLine(false)">
+            <v-icon small>mdi-view-headline</v-icon>
+          </v-btn>
+          <v-btn :value="true" :title="$t('ItemList.複数列')" :class="{ active: multiLine }" @click.stop="changeMultiLine(true)">
+            <v-icon small>mdi-view-comfy</v-icon>
+          </v-btn>
+        </v-btn-toggle>
       </template>
       <v-btn icon @click="handleClose()">
         <v-icon>mdi-close</v-icon>
       </v-btn>
     </div>
     <v-divider />
-    <div class="d-none d-sm-flex py-2 align-center" :class="{ 'ml-3': multiLine, 'ml-1': !multiLine }">
-      <v-btn @click="filterDialog = true" :disabled="disabledDetailFilter" outlined> <v-icon>mdi-filter</v-icon>{{ $t("Common.絞り込み") }} </v-btn>
-      <v-btn class="ml-1" text @click.stop="resetFilter()" small :disabled="disabledDetailFilter">
+    <div v-if="isMobile" class="mobile-summary-bar">
+      <v-menu bottom offset-y @input="filter()">
+        <template v-slot:activator="{ on, attrs }">
+          <button type="button" class="filter-chip" :class="{ active: !!sortKey }" v-bind="attrs" v-on="on">
+            <v-icon small>mdi-sort</v-icon>
+            {{ sortKey ? currentSortLabel : $t("Common.ソート") }}
+          </button>
+        </template>
+        <v-card class="sort-menu-card">
+          <v-list dense>
+            <v-list-item @click="sortKey = ''">
+              <v-list-item-title>{{ $t("Common.リセット") }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item v-for="(key, index) in sortKeys" :key="index" @click="sortKey = key.value" :input-value="sortKey === key.value">
+              <v-list-item-title>{{ $t("Common." + key.text) }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </v-menu>
+      <button type="button" class="filter-chip" :class="{ active: hasDetailFilter }" :disabled="disabledDetailFilter" @click="filterDialog = true">
+        <v-icon small>mdi-filter-variant</v-icon>
+        {{ $t("Common.絞り込み") }}
+      </button>
+    </div>
+    <div v-else class="ship-filter-bar d-none d-sm-flex align-center" :class="{ 'ml-3': multiLine, 'ml-1': !multiLine }">
+      <button type="button" class="filter-chip" :class="{ active: hasDetailFilter }" :disabled="disabledDetailFilter" @click="filterDialog = true">
+        <v-icon small>mdi-filter-variant</v-icon>
+        {{ $t("Common.絞り込み") }}
+      </button>
+      <button type="button" class="filter-reset" :disabled="disabledDetailFilter" @click.stop="resetFilter()">
         {{ $t("Common.リセット") }}
-      </v-btn>
+      </button>
       <div v-if="!isNotJapanese" class="ml-3 caption d-none d-md-block text--secondary">Ctrlキー + 艦娘をクリックでwikiを展開します。</div>
       <div class="ml-auto mr-4" v-if="shipStock.length">
         <v-switch
@@ -102,10 +102,10 @@
         />
       </div>
     </div>
-    <div class="d-flex flex-wrap" :class="{ 'ml-3': multiLine && !isMobile, 'ml-1': !multiLine }">
+    <div class="type-selector-container" :class="{ 'ml-3': multiLine && !isMobile, 'ml-1': !multiLine, mobile: isMobile }">
       <div
         v-ripple="{ class: 'info--text' }"
-        class="type-selector d-flex"
+        class="type-selector"
         :class="{ active: type === -1 && !disabledDetailFilter, disabled: keyword || uniqueIdSearch }"
         @click="changeType(-1)"
         @keypress="changeType(-1)"
@@ -728,15 +728,43 @@
 
 <style scoped>
 .list-card {
+  --accent: #14b8a6;
+  --accent-text: #0f766e;
   display: flex;
   flex-direction: column;
   height: 100vh;
 }
 
+.theme--dark .list-card,
+.theme--dark.list-card {
+  --accent-text: #5eead4;
+}
+
 .ship-table-body {
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
+
+@media (max-width: 599px) {
+  .list-card {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .list-card > .d-flex,
+  .mobile-summary-bar {
+    flex-shrink: 0;
+  }
+
+  .ship-table-body {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
 @media (min-width: 600px) {
   .list-card {
     display: block;
@@ -749,46 +777,219 @@
 }
 
 .ship-search-text {
-  width: 150px;
+  width: 168px;
+  min-width: 140px;
+  flex-shrink: 1;
+}
+
+.ship-search-text.flex-grow-1 {
+  width: auto;
+  min-width: 0;
 }
 .api-search-text {
   width: 128px;
+  flex-shrink: 0;
 }
 .ship-sort-select {
-  width: 150px;
+  width: 168px;
+  flex-shrink: 0;
+}
+
+.pill-input >>> .v-input {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.pill-input >>> .v-input__slot {
+  margin-bottom: 0;
+  min-height: 32px !important;
+  padding: 0 10px;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 16px;
+}
+
+.pill-input >>> .v-input__slot::before,
+.pill-input >>> .v-input__slot::after {
+  border-style: none !important;
+}
+
+.pill-input >>> .v-input__prepend-inner,
+.pill-input >>> .v-input__append-inner {
+  margin-top: 0 !important;
+  align-self: center;
+}
+
+.pill-input >>> input,
+.pill-input >>> .v-select__selections {
+  font-size: 12px;
+}
+
+.pill-input >>> .v-icon {
+  font-size: 16px !important;
+  height: 16px;
+  width: 16px;
+}
+
+.pill-input >>> .v-input--is-disabled {
+  opacity: 0.45;
+}
+
+.api-search-text >>> input::-webkit-outer-spin-button,
+.api-search-text >>> input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.view-toggle {
+  flex-shrink: 0;
+  height: 32px;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 16px;
+}
+
+.view-toggle >>> .v-btn {
+  height: 30px !important;
+  min-width: 36px !important;
+  width: 36px;
+  padding: 0 !important;
+  background-color: transparent !important;
+  color: inherit !important;
+  opacity: 0.5;
+}
+
+.view-toggle >>> .v-btn.active {
+  opacity: 1;
+  background-color: color-mix(in srgb, var(--accent) 18%, transparent) !important;
+  color: var(--accent-text) !important;
+}
+
+.view-toggle >>> .v-btn::before {
+  opacity: 0 !important;
+}
+
+.ship-filter-bar {
+  gap: 6px;
+  min-height: 40px;
+  padding: 4px 12px 4px 0;
+}
+
+.mobile-summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 13px;
+  background-color: transparent;
+  color: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.filter-chip:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.filter-chip.active {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background-color: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent-text);
+}
+
+.filter-chip.active >>> .v-icon {
+  color: inherit;
+}
+
+.filter-chip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.filter-chip >>> .v-icon {
+  font-size: 16px !important;
+  height: 16px;
+  width: 16px;
+}
+
+.filter-reset {
+  height: 26px;
+  padding: 0 8px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.filter-reset:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.filter-reset:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.type-selector-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.type-selector-container.mobile {
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 .type-selector {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 8px;
   border: 1px solid transparent;
-  padding: 0.5rem;
-  font-size: 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  white-space: nowrap;
   cursor: pointer;
-  min-width: 50px;
-  text-align: center;
+  user-select: none;
+  transition: background-color 0.16s ease, border-color 0.16s ease;
 }
-@media (min-width: 600px) {
-  .type-selector {
-    min-width: unset;
-  }
-}
+
 .type-selector:hover {
-  background-color: rgba(128, 128, 128, 0.2);
+  background-color: color-mix(in srgb, var(--accent) 12%, transparent);
 }
+
 .type-selector.active {
-  border-color: rgba(33, 150, 243, 0.4);
-  background-color: rgba(33, 150, 243, 0.1);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background-color: color-mix(in srgb, var(--accent) 14%, transparent);
 }
+
 .type-selector.disabled {
   opacity: 0.4;
   background-color: transparent;
   pointer-events: none;
 }
+
 .type-all-text {
-  width: 32px;
-  text-align: center;
+  padding: 0 2px;
   font-weight: bold;
-  font-size: 0.9em;
-  align-self: center;
 }
 
 .type-divider {
@@ -1357,6 +1558,14 @@ export default Vue.extend({
     disabledDetailFilter(): boolean {
       return !!this.keyword || this.isCheckedOnly || !!this.uniqueIdSearch;
     },
+    hasDetailFilter(): boolean {
+      if (!this.phase1 || !this.phase2) return true;
+      return JSON.stringify(this.shipFilter) !== JSON.stringify(new ShipFilter());
+    },
+    currentSortLabel(): string {
+      const key = this.sortKeys.find((v) => v.value === this.sortKey);
+      return key ? `${this.$t(`Common.${key.text}`)}` : '';
+    },
     enabledApiIdSearch() {
       // 在籍モード かつ ケツのuniqueId が意味のある数字
       return this.isStockOnly && this.shipStock.length && this.shipStock[this.shipStock.length - 1].uniqueId !== this.shipStock.length;
@@ -1681,11 +1890,11 @@ export default Vue.extend({
         }
         if (this.visibleSpBomberFilter) {
           if (this.shipFilter.spBomberOK) {
-            // 水爆搭載可(Lateでテスト)
-            result = filterShip(result, [194]);
+            // 水爆搭載可(Late、Swordfish(水上機型)でテスト)
+            result = filterShip(result, [194, 367]);
           } else if (this.shipFilter.spBomberNG) {
-            // 水爆搭載不可(Lateでテスト)
-            result = filterShip(result, [194], true);
+            // 水爆搭載不可(Late、Swordfish(水上機型)でテスト)
+            result = filterShip(result, [194, 367], true);
           }
         }
         if (this.visibleFighterFilter) {
@@ -1751,7 +1960,7 @@ export default Vue.extend({
         }
         if (this.shipFilter.onlyAutoOASW) {
           // 自動先制対潜のみ (除Heywood Richard)
-          result = result.filter((v) => [141, 478, 624, 394, 893, 681, 906, 920].includes(v.id) || (v.type2 === 91 && v.id !== 941 && v.id !== 942));
+          result = result.filter((v) => [141, 478, 624, 394, 893, 681, 906, 920].includes(v.id) || (v.type2 === 91 && v.id !== 941 && v.id !== 942) || v.type === 140);
         }
         if (this.shipFilter.onlyBookmarked) {
           // お気に入りのみ

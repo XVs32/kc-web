@@ -605,7 +605,7 @@
               <v-icon v-if="row.selected" color="primary">mdi-checkbox-outline</v-icon>
               <v-icon v-else color="secondary">mdi-checkbox-blank-outline</v-icon>
             </div>
-            <div class="align-self-end body-2 ml-3">{{ $t("Fleet.第x艦隊", { number: i + 1 }) }}</div>
+            <div class="align-self-end body-2 ml-3">{{ row.name || $t("Fleet.第x艦隊", { number: i + 1 }) }}</div>
             <div class="align-self-end caption ml-auto">{{ $t("Common.支援") }} {{ row.supportTypeName }}</div>
           </div>
           <div class="d-flex flex-wrap">
@@ -658,6 +658,42 @@
         </div>
       </v-card>
     </v-dialog>
+    <v-snackbar :value="tabSyncNotice" timeout="-1" bottom right min-width="0">
+      <div class="d-flex flex-column align-center">
+        <div class="d-flex align-center caption">
+          <span>{{ $t("Home.他のタブでデータが更新されました") }}</span>
+          <v-btn icon x-small class="ml-1" @click="tabSyncHelpDialog = true">
+            <v-icon small>mdi-help-circle-outline</v-icon>
+          </v-btn>
+        </div>
+        <div class="d-flex mt-1">
+          <v-btn color="primary" tonal small class="mx-2" @click="reloadForTabSync">{{ $t("Home.再読み込み") }}</v-btn>
+          <v-btn color="secondary" small class="mx-2" @click="dismissTabSyncNotice">{{ $t("Home.無視") }}</v-btn>
+        </div>
+      </div>
+    </v-snackbar>
+    <v-snackbar :value="deckShareNotice" timeout="-1" bottom min-width="0">
+      <div class="d-flex flex-column align-center">
+        <div class="caption">{{ $t("Home.共有データの読み込みに失敗しました。") }}</div>
+        <div class="d-flex mt-1">
+          <v-btn color="primary" small class="mx-2" :loading="deckShareLoading" @click="loadDeckShare">{{ $t("Home.再試行") }}</v-btn>
+          <v-btn color="secondary" small class="mx-2" :disabled="deckShareLoading" @click="dismissDeckShareNotice">{{ $t("Home.無視") }}</v-btn>
+        </div>
+      </div>
+    </v-snackbar>
+    <v-dialog v-model="tabSyncHelpDialog" width="480">
+      <v-card class="px-5 py-4">
+        <div>{{ $t("Home.他のタブでデータが更新されました") }}</div>
+        <v-divider class="my-3" />
+        <div class="body-2">{{ $t("Home.別のタブで編成データが保存されたため、このタブの情報が古い可能性があります。") }}</div>
+        <div class="body-2 mt-2">{{ $t("Home.最新の状態に合わせるため、ページ再読み込みをしてください。") }}</div>
+        <div class="body-2 mt-2">{{ $t("Home.無視すると、別タブで保存した内容と食い違ってデータがおかしくなることがあります。") }}</div>
+        <v-divider class="my-4" />
+        <div class="d-flex justify-end">
+          <v-btn color="secondary" @click="tabSyncHelpDialog = false">{{ $t("Common.閉じる") }}</v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
     <v-dialog v-model="backupPromptDialog" width="560" persistent>
       <v-card class="px-5 py-4">
         <div class="text-h6">{{ $t("Home.そろそろバックアップしませんか？") }}</div>
@@ -670,6 +706,28 @@
           <v-btn class="mr-2" color="primary" @click="backupNowFromPrompt()">{{ $t("Home.今すぐバックアップ") }}</v-btn>
           <v-btn color="error" @click="skipBackupPrompt()">{{ $t("Home.今回はスキップ") }}</v-btn>
         </div>
+      </v-card>
+    </v-dialog>
+    <v-dialog v-model="releaseNoteDialog" width="600" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2" color="primary">mdi-new-box</v-icon>
+          <span>{{ $t("Home.サイトが更新されました") }}</span>
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pt-2">
+          <div v-if="!isJapanese" class="caption mt-2">{{ $t("Home.更新内容は日本語のみの提供です。") }}</div>
+          <release-note-list :releases="unreadReleases" />
+        </v-card-text>
+        <v-divider />
+        <v-card-actions>
+          <v-btn text small href="https://github.com/noro6/kc-web/releases" target="_blank" rel="noopener noreferrer">
+            <v-icon small>mdi-github</v-icon>
+            <span class="mx-1">GitHub Releases</span>
+          </v-btn>
+          <v-spacer />
+          <v-btn color="secondary" @click="releaseNoteDialog = false">{{ $t("Common.閉じる") }}</v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
     <v-dialog v-model="areaOverwriteConfirmDialog" transition="scroll-x-transition" width="700">
@@ -725,7 +783,10 @@ import ShareDialog from '@/components/saveData/ShareDialog.vue';
 import UploadSaveData from '@/components/saveData/UploadSaveData.vue';
 import SettingInitialLevel from '@/components/item/SettingInitialLevel.vue';
 import ShipImportDiff from '@/components/database/ShipImportDiff.vue';
+import ReleaseNoteList from '@/components/common/ReleaseNoteList.vue';
+import ReleaseNoteManager, { ReleaseNote } from '@/classes/releaseNote';
 import SaveData from '@/classes/saveData/saveData';
+import DeckShare from '@/classes/saveData/deckShare';
 import SiteSetting, { SiteTheme } from '@/classes/siteSetting';
 import FirebaseManager from '@/classes/firebaseManager';
 import LZString from 'lz-string';
@@ -738,6 +799,7 @@ import Const, { AB_MODE } from './classes/const';
 import ShipStockDiff from './classes/fleet/shipStockDiff';
 import Airbase from './classes/airbase/airbase';
 import AirbaseInfo from './classes/airbase/airbaseInfo';
+import TabSync from './classes/tabSync';
 
 /** バックアップ通知の間隔 (1ヵ月) */
 const BACKUP_PROMPT_INTERVAL = 1000 * 60 * 60 * 24 * 30;
@@ -752,6 +814,7 @@ export default Vue.extend({
     SettingInitialLevel,
     UploadSaveData,
     SaveDataMobileTab,
+    ReleaseNoteList,
   },
   data: () => ({
     saveData: new SaveData(),
@@ -765,6 +828,10 @@ export default Vue.extend({
     readInform: false,
     readInformText: '',
     readResultColor: 'success',
+    tabSyncNotice: false,
+    tabSyncDismissed: false,
+    tabSyncHelpDialog: false,
+    unsubscribeTabSync: undefined as undefined | (() => void),
     setting: new SiteSetting(),
     editDialog: false,
     editedName: '',
@@ -773,7 +840,10 @@ export default Vue.extend({
     selectedColor: '',
     saveDataOrder: 0,
     shareDialog: false,
-    urlParameters: {} as { data?: string; predeck?: string; stockid?: string },
+    urlParameters: {} as { data?: string; d?: string; predeck?: string; stockid?: string },
+    deckShareCode: '',
+    deckShareNotice: false,
+    deckShareLoading: false,
     urlFragments: {} as { predeck?: string; ships?: ShipStock[]; items?: ItemStock[]; saveData?: string },
     unsubscribe: undefined as unknown,
     rules: {
@@ -789,13 +859,15 @@ export default Vue.extend({
     backupSelectDialog: false,
     backupPromptDialog: false,
     backupPromptChecked: false,
+    releaseNoteDialog: false,
+    unreadReleases: [] as ReleaseNote[],
     isImportSaveData: true,
     isImportShipData: true,
     isImportItemData: true,
     isImportURLData: true,
     disabledIndexedDB: false,
     fleetSelectDialog: false,
-    selectableFleets: [] as { selected: boolean; fleet: Fleet; supportTypeName: string }[],
+    selectableFleets: [] as { selected: boolean; fleet: Fleet; name: string; supportTypeName: string }[],
     tempManager: undefined as undefined | CalcManager,
     fileColors: Const.FILE_COLORS,
     areaOverwriteConfirmDialog: false,
@@ -909,11 +981,12 @@ export default Vue.extend({
           this.backupPromptChecked = true;
           this.$nextTick(() => {
             this.checkAutoBackupPrompt();
+            this.checkReleaseNotes();
           });
         }
       }
 
-      if (!this.urlParameters || !this.urlParameters.stockid) {
+      if (!this.urlParameters || (!this.urlParameters.stockid && !this.urlParameters.d)) {
         this.loading = !value;
       }
       this.disabledIndexedDB = this.$store.state.disabledDatabase;
@@ -978,6 +1051,13 @@ export default Vue.extend({
     }
   },
   mounted() {
+    this.unsubscribeTabSync = TabSync.subscribe((scope) => {
+      // 編成データの保存だけを通知する。所持データや設定の更新では出さない
+      // 他タブの自動保存のたびに出し直すと邪魔なので、一度閉じたら再読み込みまで出さない
+      if (scope === 'savedata' && !this.tabSyncDismissed) {
+        this.tabSyncNotice = true;
+      }
+    });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
     w.loadShipData = this.setShipStock;
@@ -1032,6 +1112,12 @@ export default Vue.extend({
         return;
       }
 
+      // 初回訪問から1か月未満は出さない。0 は機能追加前からの利用者なので対象外。
+      const firstVisitedAt = this.setting.firstVisitedAt ?? 0;
+      if (firstVisitedAt && Date.now() - firstVisitedAt < BACKUP_PROMPT_INTERVAL) {
+        return;
+      }
+
       const lastActionAt = Math.max(this.setting.lastBackupCreatedAt ?? 0, this.setting.lastBackupPromptAt ?? 0);
       if (!lastActionAt || Date.now() - lastActionAt >= BACKUP_PROMPT_INTERVAL) {
         this.openBackupPrompt();
@@ -1046,20 +1132,34 @@ export default Vue.extend({
       this.downloadBackupFile();
       this.backupPromptDialog = false;
     },
+    async checkReleaseNotes() {
+      // 他の通知と重ならないよう、出ている場合は既読にせず次回へ回す
+      if (this.backupPromptDialog) {
+        return;
+      }
+
+      const releases = await ReleaseNoteManager.fetchReleases(this.$store.state.siteVersion);
+      if (!releases.length || this.backupPromptDialog) {
+        return;
+      }
+
+      const unread = ReleaseNoteManager.getUnreadReleases(releases, this.setting.firstVisitedAt ?? 0);
+      ReleaseNoteManager.markAsRead(releases[0].tag);
+      if (unread.length) {
+        this.unreadReleases = unread;
+        this.releaseNoteDialog = true;
+      }
+    },
     async loadURLInformation() {
       // 展開待ち中のデータがあれば読み込んで消す
       if (Object.keys(this.urlParameters).length) {
         if (this.urlParameters.data) {
           // 編成データ解析
-          const urlData = SaveData.decodeURLSaveData(this.urlParameters.data);
-          urlData.isMain = true;
-          urlData.isActive = true;
-          this.saveData.childItems.push(urlData);
-          this.$store.dispatch('setMainSaveData', urlData);
-          if (!this.isAirCalcPage) {
-            // ページ遷移
-            this.$router.push('aircalc');
-          }
+          this.openURLSaveData(SaveData.decodeURLSaveData(this.urlParameters.data));
+        } else if (this.urlParameters.d) {
+          // 共有URL 取得に失敗したら再試行できるよう、コードは残しておく
+          this.deckShareCode = this.urlParameters.d;
+          await this.loadDeckShare();
         } else if (this.urlParameters.predeck && this.loadAndOpenFromDeckBuilder(this.urlParameters.predeck)) {
           // デッキビルダー解析
           this.inform('編成の読み込みが完了しました。');
@@ -1198,6 +1298,7 @@ export default Vue.extend({
             this.selectableFleets.push({
               selected: i === 0,
               fleet,
+              name: manager.fleetInfo.fleetNames[i] ?? '',
               supportTypeName: fleet
                 .getSupportTypeNames()
                 .map((v) => this.$t(`Result.${v}`))
@@ -1243,9 +1344,11 @@ export default Vue.extend({
       if (!manager) {
         return;
       }
-      const fleets = this.selectableFleets.filter((v) => v.selected).map((v) => v.fleet);
-      // 選択された艦隊で置き換え
-      manager.fleetInfo = new FleetInfo({ info: manager.fleetInfo, fleets });
+      const selectedFleets = this.selectableFleets.filter((v) => v.selected);
+      const fleets = selectedFleets.map((v) => v.fleet);
+      const fleetNames = selectedFleets.map((v) => v.name);
+      // 選択された艦隊で置き換え。名前は選んだ艦隊に揃える
+      manager.fleetInfo = new FleetInfo({ info: manager.fleetInfo, fleets, fleetNames });
       this.expandCalcManager(manager);
       this.fleetSelectDialog = false;
       this.inform('デッキビルダー形式編成データを読み込みました。');
@@ -1295,6 +1398,16 @@ export default Vue.extend({
             }
           }
 
+          // デッキビルダーに名前があればそれを使い、なければ今のタブ名を残す
+          const importedNames = manager.fleetInfo.fleetNames ?? [];
+          const baseNames = currentManager.fleetInfo.fleetNames ?? [];
+          const fleetNames: string[] = [];
+          for (let i = 0; i < newFleets.length; i += 1) {
+            const importedName = FleetInfo.normalizeFleetName(importedNames[i]);
+            fleetNames.push(importedName || FleetInfo.normalizeFleetName(baseNames[i]));
+          }
+          manager.fleetInfo.fleetNames.splice(0, manager.fleetInfo.fleetNames.length, ...fleetNames);
+
           // 今開いているデータが連合かどうか
           if (currentManager.fleetInfo.isUnion) {
             manager.fleetInfo = new FleetInfo({ info: manager.fleetInfo, isUnion: true, fleetType: currentManager.fleetInfo.fleetType });
@@ -1311,6 +1424,7 @@ export default Vue.extend({
       } else {
         mainData = new SaveData();
         mainData.name = '外部データ';
+        mainData.isExternal = true;
         mainData.isActive = true;
         mainData.isMain = true;
         mainData.tempData = [manager];
@@ -1475,6 +1589,7 @@ export default Vue.extend({
           this.saveDataOrder = 0;
           newData.editedDate = Date.now();
           newData.isUnsaved = false;
+          newData.isExternal = false;
           newData.saveManagerData();
 
           let folder = this.saveData.childItems.find((v) => v.isDirectory);
@@ -1604,9 +1719,47 @@ export default Vue.extend({
         this.$store.dispatch('updateSetting', this.setting);
       }
     },
+    openURLSaveData(urlData: SaveData) {
+      urlData.isMain = true;
+      urlData.isActive = true;
+      this.saveData.childItems.push(urlData);
+      this.$store.dispatch('setMainSaveData', urlData);
+      if (!this.isAirCalcPage) {
+        // ページ遷移
+        this.$router.push('aircalc');
+      }
+    },
+    async loadDeckShare() {
+      this.deckShareLoading = true;
+      const result = await DeckShare.fetch(this.deckShareCode);
+      if (result.ok) {
+        const urlData = SaveData.decodeURLSaveData(result.data.manager);
+        if (result.data.name) {
+          urlData.name = result.data.name;
+        }
+        urlData.remarks = result.data.remarks;
+        this.openURLSaveData(urlData);
+        this.deckShareCode = '';
+        this.deckShareNotice = false;
+      } else if (result.status === 404) {
+        this.deckShareCode = '';
+        this.deckShareNotice = false;
+        this.inform('共有データが見つかりません。', true);
+      } else {
+        this.deckShareNotice = true;
+      }
+      this.deckShareLoading = false;
+      this.loading = false;
+    },
+    dismissDeckShareNotice() {
+      this.deckShareNotice = false;
+      this.deckShareCode = '';
+    },
     async clickedShare() {
       await (this.shareDialog = true);
-      (this.$refs.shareDialog as InstanceType<typeof ShareDialog>).createdURL = '';
+      const shareDialog = this.$refs.shareDialog as InstanceType<typeof ShareDialog>;
+      shareDialog.createdURL = '';
+      shareDialog.includeRemarks = true;
     },
     getUrlParams(value: string) {
       this.urlParameters = {};
@@ -1830,10 +1983,21 @@ export default Vue.extend({
     scrollTop() {
       window.scroll({ top: 0, behavior: 'smooth' });
     },
+    reloadForTabSync() {
+      window.location.reload();
+    },
+    dismissTabSyncNotice() {
+      this.tabSyncNotice = false;
+      this.tabSyncHelpDialog = false;
+      this.tabSyncDismissed = true;
+    },
   },
   beforeDestroy() {
     if (this.unsubscribe) {
       (this.unsubscribe as () => void)();
+    }
+    if (this.unsubscribeTabSync) {
+      this.unsubscribeTabSync();
     }
   },
   destroyed() {
